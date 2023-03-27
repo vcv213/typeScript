@@ -1,0 +1,217 @@
+
+Test Design Document to test REST APIs of Github User objects  :
+==============================================================
+
+Methodologies: Functional, Integration, Negative, Performance/Stress/Scale/Longevity, Usability, etc.
+EXIT Criteria Defined at the end fo this TestDesignDoc.
+
+i) Get the authenticated user:
+-------------------------------
+    a) Functional:
+        1) Invoke GET /user call to verify status code 200 and verify that response lists public and private profiles,
+            when user is authenticated through basic authentication with User scope. Validate private and public response details.
+        2) Invoke GET /user call to verify status code 200 and verify response lists public and private profile details,
+            when user is authenticated through OAuth authentication with User scope.
+        3) Invoke GET /user call to verify status code 200 and verify response contains public profile details,
+            when user is authenticated through OAuth authentication without User scope.
+        4) Verify all values from GET /user call request response are correct. (data validation). compare with UI web profile page.
+
+    b) Negative :
+        NOTE: In Every negative case, we verify not only HTTP response code, but also verify that appropriate 
+            User Error message and corrective action (if applicable) is displayed.
+        1) verify private profile info is not displayed when user is authenticated through OAuth without the user scope; but verify
+            that it displays public profile information.
+        2) GET /user call on User without Basic or Oauth authentication should give status code 401
+        3) GET /user call on User info without Basic or Oauth authentication should give status code 401
+        4) GET /user call on User with wrong credentials shoudl give status code 403.
+        5) perform GET /user call in a way to cause HTTP response code 304 and test that the status code 304 is shown.
+        6) Disable authorization for the client and perform GET /user request; verify HTTP response 403.
+        7) Disable basic authentication/Oauth of user and verify that the user can longer perform successful GET  /user call and get 401.
+        8) Re-Enable  basic authentication/Oauth of user and verify that the user can longer perform successful GET  /user call and get 401.
+        9) GET /user request on invalid user (user does not exist) should return 404.
+        10) GET /user request with Oauth incorrect key, secret combinations fails status code 401.
+        11) Mock Get /user response with a missing param and Jest should be able to catch the missing param from response. (response validation)
+
+    c) Performance/Scalability :
+        calculate avg response time and Latencies > SLA times.
+        1) Have 10k (or more) mock clients Get /user REST API calls on a single user and verify the HTTP responses. 
+            All responses Status code = 200.
+        2) Have 100k (or more) mock clients Get /user REST API calls on different users and verify the HTTP response. 
+            Status code = 200.
+
+
+ii) Update the authenticated user:
+----------------------------------
+    a) Functional:
+        1) Issue PATCH /user request to update profile's email (that was set to private), should remain private. verify through GET on user.
+        2) Issue PATCH /user request to update new name of the user. HTTP Status is 200. Verify the field was updated (from GET request)
+        3) Issue PATCH /user request to update new blog URL of the user. HTTP Status is 200.
+        4) Issue PATCH /user request to update new twitter_username of the user. HTTP Status is 200. Verify the field was updated (from GET request)
+        5) Issue  PATCH /user request to update new company name of the user. HTTP Status is 200.
+        6) Issue PATCH /user request to update new location of the user. HTTP Status is 200.
+        7) Issue PATCH /user request to update hireable field value (boolean value) HTTP Status is 200.
+        8) Issue PATCH /user request to update all applicable fields of the user and verify the status code 200
+        9) Issue PATCH /user request to update all values with same earlier values and verify status code 200. 
+            Verify all field values from GET request response params.
+
+    b) Negative:
+        NOTE: Every negative case should not only return appropriate Status code but also appropriate 
+            User Error message and corrective action (if applicable).
+        1) Using PATCH /user request, update new name of the user with NULL value. HTTP Status 400.
+        2) Not using right authentication for PATCH /user request, while updating a field, will fail with HTTP 401 status.
+        3) update value of the user without authorization and expect HTTP 403 status.
+        4) Issue PATCH /user request to perform update to fields on the user. Should give status code 404.
+        5) Create semantic error in the PATCH /user API request and verify status code 422
+        6) Update fields with incorrect values and verify failure status code.
+        7) Replace all previous values of user profile to blank values and verify the status code 304.
+        8) Passing a non-existsent/invalid param to PATCH /user API request, should return an appropriate failure status code 404.
+        9) PATCH request on invalid user should return Status 404.
+    
+    c) Performance/Scalability : 
+        (calculate avg response time and Latencies > SLA times.)
+        1) Have 10000 (or more) mock clients make PATCH /user API request calls to update single field and verify the HTTP response. 
+            All responses should have status code 200.
+        2) Have 100000 (or more) mock clients make PATCH /user API request calls to various fields concurrently and verify the HTTP response. 
+            All responses should have status code 200.
+
+
+iii) List users:
+----------------
+    a) Functional:
+        1) API request to List all users should give response status code 200
+        2) API request to List all users should list personal user accounts and organization accounts.
+        3) Using 'since: 10' query params, returns users with ID greater than 10, with status code 200. Verify user IDs dispalyed.
+        4) using 'per_page : 50' query params returns users list with 50 results per page. Verify the count and status code 200.
+        5) Verify the GET /users REST api call for github app.
+
+    b) Negative:
+        NOTE: Every negative case should not only return appropriate Status code but also appropriate 
+                User Error message and corrective action (if applicable).
+        1) Out of bound: Using 'per_page : 101' query params should fail with the status code with right error message.
+        2) Using 'since': <ID> query params, with ID value greater than highest available ID (non-existent ID) receives failure 
+            status Code.
+        3) Wrong authentication while calling 'List users' API will return status code 401.
+        4) Providing No authentication while calling 'List users' API will return status code 401.
+
+    c) Performance : 
+        (calculate avg response time and Latencies > SLA times)
+        1) Get all list of 1000000 users or more (mock) invoked by multiple List users API calls concurrently. 
+        2) using List users API call, Display list of users in per_page 5 with 1000000. Should be able to scroll through pages.
+
+iv) Get a user:
+---------------
+    a) Functional: 
+        1) Successfully authenticaed GET call on /users/{username} should have status code 200 and will only display the public 
+            information of that user (parse response for verification). 
+        2) Verify 'plan' information of user through GET call /users/{username} and verify the status code 200 upon success.
+        3) Updrade Plan info and assign new collaborators of the user and verify that the GET call /users/{username} is able to 
+            now verify upgraded plan info of user. (parse for value of user['plan']['name'] and user ['collaborators'] info for verification)
+        4) Githubb app user who has 'plan' user permission, should be able to retrieve user Github plan from /users/{username} API request 
+            (response parsing required). Status must be 200.
+        5) Leave a public email address blank for user. Make /users/{username} API call. 'email' field in response should have NULL value.
+        6) Unauthenticated GET ('/users/{username}') request to 'get a user' should succeed (Status 200), but should not display public user['email']=NULL.
+
+    b) Negative:
+        NOTE: Every negative case should not only return appropriate Status code but also appropriate User Error message and 
+            corrective action if applicable.)
+        1) GET request '/users/{username}' on invalid User should return Status code 404 and right error message.
+        2) GET request '/users/{username}' wihout 'username' param should return Failure with right error message. Status 400 or other appropriate code.
+        3) Githubb app user who does not have'plan' user permission should be able to retrieve user Github plan info (response parsing required).
+        4) Incorrect User token in Authorization header to GET user info with /users/{username} through Github app should have return Status code 404.
+        5) GET request '/users/{username}' on a invalid user will return status code 404.
+
+    c) Performance :
+        calculate avg response time and Latencies > SLA times.
+        1) Invoke multiple /users/{username} API calls concurrently on 100k users.
+        2) using List users API call, Display list of users in per_page 5 with 1000000. Should be able to scroll through pages.
+
+v) Get contextual information for a user:
+-----------------------------------------
+    a) Functional:
+        1) GET request '/users/{username}/hovercard' with basic authentication and 'repo' scope, should give status 200 
+            and hovercard information (parse response for verification). Verify user's pull requests, issues, repositories, 
+            and organizations by parsing response.
+        2) GET request '/users/{username}/hovercard' with OAuth and 'repo' scope, should give status 200 and hovercard information 
+            (parse response for verification). Verify user's pull requests, issues, repositories, and organizations by parsing response.
+        3) Issue GET request '/users/{username}/hovercard' with subject_type and subject_id and retrieve user's hovercard without additional details. 
+            (parse response for verification).
+        4) Verify that additional info on context for the person's hovercard has been provided with GET request '/users/{username}/hovercard' 
+            used with subject_id and subject_type. (parse response for verification).
+        5) Verify GET request '/users/{username}/hovercard' with 'accept' header set to "application/vnd.github+json". It should return 200 response.
+
+    b) Negative:
+        1) GET request '/users/{username}/hovercard' of a user context with one of 'subject_type' params (organization, repository, issue, pull_request) with missing 
+            'subject_id' will return Status Code 400 and give readable error message with corrective action.
+        2) GET request '/users/{username}/hovercard' of a user context with subject_id  with missing 'subject_type' will return Status Code 400 and give readable error message with corrective action. 
+        3) GET request '/users//hovercard' with missing username should fail with status 404
+        4) GET request '/users/{invalid_username}/hovercard' with invalid username should fail with status 401
+        5) Incorrect token sent in GET request header 'Authorization:' shoudl result in Status 422.
+
+    c) Performance :
+        calculate avg response time and Latencies > SLA times.
+        1) Invoke multiple /users/{username} API calls concurrently on 100k users.
+        2) using List users API call, Display list of users in per_page 5 with 1000000. Should be able to scroll through pages.
+
+
+Common Testcases applicable for all User objects:
+==================================================
+
+a) Integration Tests  (interaction among user objects):
+---------------------
+    1) GET Authenticated User Info -> Update User info (name, company, etc.) -> GET Authenticated User Info to verify updated name, company 
+        (parsing response) and the contextual info Eg: repo.
+    2) GET call 'List all Users' -> parse response to get {username} ('login') -> GET call /users/{username} and verify status codes 
+        and response and perform GET call on user to get plan info.
+    3) Change a user field value (eg: location) to private view and verify through "Get a User" GET call that updated field 
+        is now invisible (from parsing response).
+    4) PATCH user request to update public "email" of User. Perform GET a user (/users/{username}) request and verify updated 
+        email address and verify updated emailID in response.
+    5) 
+
+b) Performance:
+---------------
+    1) Calculate average response time on 100k API GET/PATCH requests of each user object above. It should be less than SLAs stated.
+        For response times > SLA, perform RCA and fix bugs.
+    2) Monitor CPU usage, memory consumption, Memory leaks, Throughput, Latencies on the server. Perform RCA on anamolous perf stats and fix. 
+
+c) Resiliency :
+-----------------
+    1) Bring server down while the call is in progress.
+    2) Client connection down while making REST API call.
+    3) Cause response delay for the API call made causing status code 408.
+    4) Inject Delay (80% of timeout value) in response of the API call but in a way that it succeeds.
+    5) Inject error for API call and retry teh GET/PATCH user object calls. Verify retry API request succeeds.
+
+d) Usability:
+-------------
+    1) Successful GET call to retrieve user info gives out a valid Success message for user readability.
+    2) Unsuccessful GET call to retrieve user info (other than Status code 200) should send a readable Error Message 
+        to the end user suggesting a corrective action.
+    3) (UI) Update user profile fields (location, bio, etc.) using PATCH request. Perform field values verification by inspecting webpage.
+
+e) System/Stress/Longevity Testing:
+------------------------------------
+    1) Perform concurrent API calls (+ve and -ve cases) of all 5 User Objects simultaneously using 1Million active API requests. 
+        Should get appropriate status codes. Perform this run for 24hrs continuously with delays (every 1hrs), reboots(every 4hrs), 
+        crashes (every 4hrs) every to test the durability of REST APIs, servers and clients.
+    
+    2) Perform system testing with other User objects in Guthub (not limited to scope of 5 user objects) integrated in the system and perform 
+        full system testing. 
+
+f) Regression Testing:
+----------------------
+    1) Run regression tests on other GET/PATCH/POST/PUT User objects to verify new User Objects functionality doesnt cause regression to 
+        existing code.
+
+                ===========================================
+                EXIT Criteria for Shipping these REST APIs:
+                ===========================================
+
+1) All usecases are covered and PASSED
+2) 100% execution and 100 Pass rate
+3) No Bugs - Blocker, shipstopers, critical resolved
+4) Bug verifications and regression runs Done
+5) Automation 100% complete
+6) Performance numbers meet SLAs. 
+7) Longevity and stress with no crashes in 24hrs run. (could be 72Hrs depending on release schedule)
+8) Documentation of all REST APIs Done.
